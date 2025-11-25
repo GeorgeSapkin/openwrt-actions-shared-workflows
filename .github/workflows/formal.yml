@@ -30,7 +30,8 @@ jobs:
       - name: Checkout formalities
         uses: actions/checkout@v6
         with:
-          repository: openwrt/actions-shared-workflows
+          repository: georgesapkin/openwrt-actions-shared-workflows
+          ref: formal-fix-permissions
           path: workflow_context
           sparse-checkout: |
             .github/scripts/check_formalities.sh

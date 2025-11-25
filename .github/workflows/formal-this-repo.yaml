@@ -10,6 +10,7 @@ permissions:
 jobs:
   build:
     name: Test Formalities
-    uses: openwrt/actions-shared-workflows/.github/workflows/formal.yml@main
+    uses: georgesapkin/openwrt-actions-shared-workflows/.github/workflows/formal.yml@formal-fix-permissions-v2
     with:
       post_comment: true
+      warn_on_no_modify: true

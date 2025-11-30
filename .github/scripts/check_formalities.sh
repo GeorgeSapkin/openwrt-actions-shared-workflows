@@ -20,6 +20,8 @@ RET=0
 COMMIT=""
 HEADER_SET=0
 
+REPO_PATH=${1:+-C "$1"}
+
 if [ -f 'workflow_context/.github/scripts/ci_helpers.sh' ]; then
 	source workflow_context/.github/scripts/ci_helpers.sh
 else
@@ -318,14 +320,14 @@ main() {
 	fi
 	echo
 
-	for commit in $(git rev-list HEAD ^origin/"$BRANCH"); do
+	for commit in $(git $REPO_PATH rev-list HEAD ^origin/"$BRANCH"); do
 		HEADER_SET=0
 		COMMIT="$commit"
 
 		info "=== Checking commit '$commit'"
 
 		msg='Pull request should not include merge commits'
-		if git show --format='%P' -s "$commit" | grep -qF ' '; then
+		if git $REPO_PATH show --format='%P' -s "$commit" | grep -qF ' '; then
 			output_fail "$msg"
 			RET=1
 
@@ -337,24 +339,24 @@ main() {
 			status_pass "$msg"
 		fi
 
-		author_name="$(git show -s --format=%aN "$commit")"
-		committer_name="$(git show -s --format=%cN "$commit")"
+		author_name="$(git $REPO_PATH show -s --format=%aN "$commit")"
+		committer_name="$(git $REPO_PATH show -s --format=%cN "$commit")"
 		check_name 'Author' "$author_name"
 		check_name 'Committer' "$committer_name"
 
-		author_email="$(git show -s --format='<%aE>' "$commit")"
-		committer_email="$(git show -s --format='<%cE>' "$commit")"
+		author_email="$(git $REPO_PATH show -s --format='<%aE>' "$commit")"
+		committer_email="$(git $REPO_PATH show -s --format='<%cE>' "$commit")"
 		check_email 'Author' "$author_email"
 		check_email 'Committer' "$committer_email"
 
-		subject="$(git show -s --format=%s "$commit")"
+		subject="$(git $REPO_PATH show -s --format=%s "$commit")"
 		echo
 		info 'Checking subject:'
 		echo "$subject"
 		check_subject "$subject"
 
-		body="$(git show -s --format=%b "$commit")"
-		sob="$(git show -s --format='Signed-off-by: %aN <%aE>' "$commit")"
+		body="$(git $REPO_PATH show -s --format=%b "$commit")"
+		sob="$(git $REPO_PATH show -s --format='Signed-off-by: %aN <%aE>' "$commit")"
 		echo
 		info 'Checking body:'
 		echo "$body"

@@ -76,6 +76,17 @@ output_details() {
 	fi
 }
 
+output_pass() {
+	local msg="$1"
+	local reason="${2:-}"
+
+	# Don't actually output anything to actions output
+	status_pass "$msg"
+	if [ -n "$reason" ]; then
+		echo "${INDENT_TERM}Reason: $reason"
+	fi
+}
+
 output_warn() {
 	local msg="$1"
 	local actual="${2:-}"
@@ -117,8 +128,12 @@ output_split_fail() {
 	printf "${INDENT_MD}\$\\\textsf{%s\\color{red}{%s}}\$\n" "${2:0:$1}" "${2:$1}" >> "$GITHUB_OUTPUT"
 }
 
+is_main_branch() {
+	[ "$1" = "main" ] || [ "$1" = "master" ]
+}
+
 is_stable_branch() {
-	[ "$1" != "main" ] && [ "$1" != "master" ]
+	! is_main_branch "$1"
 }
 
 is_github_noreply() {
@@ -309,6 +324,15 @@ main() {
 		warn 'Weblate exceptions are enabled'
 	else
 		echo 'Weblate exceptions are disabled'
+	fi
+	echo
+
+	info "Checking PR #$PR_NUMBER"
+	msg='Pull request should come from a feature branch'
+	if is_main_branch "$HEAD_BRANCH"; then
+		output_fail "$msg" "\`$HEAD_BRANCH\` branch"
+	else
+		output_pass "$msg" "\`$HEAD_BRANCH\` branch"
 	fi
 	echo
 

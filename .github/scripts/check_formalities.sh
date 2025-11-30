@@ -128,6 +128,20 @@ output_split_fail() {
 	printf "${INDENT_MD}\$\\\textsf{%s\\color{red}{%s}}\$\n" "${2:0:$1}" "${2:$1}" >> "$GITHUB_OUTPUT"
 }
 
+legend() {
+	info 'Legend:'
+	status_pass 'Check passed'
+	echo "${INDENT_TERM}Reason: (optional) explanation"
+	status_warn "Check passed with a warning and won't fail the job"
+	echo "${INDENT_TERM}Actual: (optional) actual value or reason"
+	echo "${INDENT_TERM}Expected: (optional) expected value"
+	status_fail 'Check failed and will fail the job'
+	echo "${INDENT_TERM}Actual: (optional) actual value or reason"
+	echo "${INDENT_TERM}Expected: (optional) expected value"
+	status_skip "Check skipped, due to another check or workflow configuration and won't affect the job"
+	echo -e "${INDENT_TERM}Reason: (optional) explanation\n"
+}
+
 is_main_branch() {
 	[ "$1" = "main" ] || [ "$1" = "master" ]
 }
@@ -326,6 +340,8 @@ main() {
 		echo 'Weblate exceptions are disabled'
 	fi
 	echo
+
+	legend
 
 	info "Checking PR #$PR_NUMBER"
 	msg='Pull request should come from a feature branch'

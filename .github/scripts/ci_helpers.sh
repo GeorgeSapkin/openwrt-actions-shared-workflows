@@ -27,7 +27,7 @@ err_die() {
 
 # Prints the string and colors the part after the given length in red
 split_fail() {
-	printf "%s\e[1;31m%s\e[0m\n" "${2:0:$1}" "${2:$1}"
+	printf "$3%s\e[1;31m%s\e[0m\n" "${2:0:$1}" "${2:$1}"
 }
 
 # Prints `[$2] $3` with status colored according to `$1`
@@ -48,4 +48,9 @@ status_warn() {
 # Prints `[fail] $1` with red fail
 status_fail() {
 	status 31 fail "$1"
+}
+
+# Prints `[skip] $1` with default-colored skip
+status_skip() {
+	status 39 skip "$1"
 }

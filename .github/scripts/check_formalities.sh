@@ -112,7 +112,7 @@ is_main_branch() {
 }
 
 is_stable_branch() {
-	[ "$1" != "main" ] && [ "$1" != "master" ]
+	! is_main_branch "$1"
 }
 
 is_weblate() {
@@ -306,6 +306,15 @@ main() {
 		warn 'Weblate exceptions are enabled'
 	else
 		echo 'Weblate exceptions are disabled'
+	fi
+	echo
+
+	msg='Pull request should come from a feature branch'
+	if is_main_branch "$HEAD_BRANCH"; then
+		output_fail "$msg" "\`$HEAD_BRANCH\`"
+		RET=1
+	else
+		status_pass "$msg"
 	fi
 	echo
 

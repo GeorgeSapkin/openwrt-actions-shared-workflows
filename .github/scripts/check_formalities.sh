@@ -334,6 +334,9 @@ main() {
 	# Initialize GitHub actions output
 	output 'content<<EOF'
 
+	echo 'Something broken? Consider providing feedback:'
+	echo -e 'https://github.com/openwrt/actions-shared-workflows/issues\n'
+
 	if exclude_weblate; then
 		warn 'Weblate exceptions are enabled'
 	else

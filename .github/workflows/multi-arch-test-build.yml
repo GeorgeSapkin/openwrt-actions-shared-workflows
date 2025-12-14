@@ -15,54 +15,61 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - arch: aarch64_generic
-            target: armsr-armv8
-            runtime_test: true
-
-          - arch: arm_cortex-a15_neon-vfpv4
-            target: armsr-armv7
-            runtime_test: true
-
-          - arch: arm_cortex-a9_vfpv3-d16
-            target: mvebu-cortexa9
-            runtime_test: false
-
-          - arch: i386_pentium-mmx
-            target: x86-geode
-            runtime_test: true
-
           - arch: mips_24kc
             target: ath79-generic
             runtime_test: true
 
-          - arch: mipsel_24kc
-            target: mt7621
-            runtime_test: false
-
-          - arch: powerpc_464fp
-            target: apm821xx-nand
-            runtime_test: false
-
-          - arch: powerpc_8548
-            target: mpc85xx-p1010
-            runtime_test: false
-
-            # Workaround: riscv64_riscv64 was renamed to riscv64_generic
-          - arch: ${{ (github.base_ref == 'openwrt-24.10' || github.base_ref == 'openwrt-23.05') && 'riscv64_riscv64' || 'riscv64_generic' }}
-            target: sifiveu-generic
-            runtime_test: false
-
-          - arch: x86_64
-            target: x86-64
-            runtime_test: true
-
     steps:
-      - name: Remove unused Android SDK, .NET, Swift, GHC
+      - name: Set up QEMU
+        if: ${{ matrix.runtime_test  }}
         run: |
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /usr/local/.ghcup
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/share/swift
+          # QEMU_TARGET="${ARCH%%_*}"
+          QEMU_TARGETS="mips mipsel mipsn32 mipsn32el"
+          QEMU_TARGET_LIST=$(echo "$QEMU_TARGETS" | sed 's/[^ ]\+/&-linux-user/g')
+
+          sudo apt update
+          sudo apt install -y binfmt-support libglib2.0-dev libpixman-1-dev
+          # qemu-user-static
+          # sudo update-binfmts --import
+
+          git clone https://gitlab.com/qemu-project/qemu.git
+          cd qemu
+
+          ./configure --target-list="$QEMU_TARGET_LIST" --static --disable-werror
+          make -j$(nproc)
+          sudo make install
+
+          mkdir -p /usr/share/binfmts
+
+          # arg order matters
+          for target in $QEMU_TARGETS; do
+            sudo ./scripts/qemu-binfmt-conf.sh \
+              --systemd "$target" \
+              --exportdir '/usr/lib/binfmt.d/' \
+              --credential yes \
+              --persistent yes \
+              --preserve-argv0 yes
+
+            sudo ./scripts/qemu-binfmt-conf.sh \
+              --systemd "$target" \
+              --debian \
+              --exportdir '/usr/share/binfmts/' \
+              --credential yes \
+              --persistent yes \
+              --preserve-argv0 yes
+
+            sudo update-binfmts --import "qemu-$target"
+          done
+
+          ls -lh /usr/lib/binfmt.d/
+          cat /usr/lib/binfmt.d/qemu-mips.conf
+          cat /usr/share/binfmts/qemu-mips.conf
+
+          sudo systemctl restart binfmt-support
+
+          update-binfmts --display
+        env:
+          ARCH: ${{ matrix.arch }}
 
       - uses: actions/checkout@v6
         with:
@@ -206,18 +213,15 @@ jobs:
           echo "HAVE_PKGS=$HAVE_PKGS" >> $GITHUB_ENV
           echo "PKG_MANAGER=$PKG_MANAGER" >> $GITHUB_ENV
 
-      - name: Register QEMU
-        if: ${{ matrix.runtime_test && fromJSON(env.HAVE_PKGS) }}
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y qemu-user-static binfmt-support
-          sudo update-binfmts --import
+      # - name: Set up Docker Buildx
+      #   uses: docker/setup-buildx-action@v3
 
       - name: Checkout
         if: ${{ matrix.runtime_test && fromJSON(env.HAVE_PKGS) }}
         uses: actions/checkout@v6
         with:
-          repository: openwrt/actions-shared-workflows
+          repository: georgesapkin/openwrt-actions-shared-workflows
+          ref: apk-strace
           path: dockerfiles_feeds
           sparse-checkout: |
             .github/scripts/ci_helpers.sh
@@ -227,6 +231,14 @@ jobs:
 
       - name: Build Docker container
         if: ${{ matrix.runtime_test && fromJSON(env.HAVE_PKGS) }}
+        # uses: docker/build-push-action@v6
+        # with:
+        #   build-args: ARCH
+        #   context: dockerfiles_feeds/.github/dockerfiles_feeds/
+        #   load: true
+        #   platforms: linux/${{ matrix.arch }}
+        #   push: false
+        #   tags: test-container
         run: |
           docker build --platform linux/${{ matrix.arch }} -t test-container \
             --build-arg ARCH dockerfiles_feeds/.github/dockerfiles_feeds/
@@ -237,6 +249,7 @@ jobs:
         if: ${{ matrix.runtime_test && fromJSON(env.HAVE_PKGS) }}
         run: |
           docker run --platform linux/${{ matrix.arch }} --rm -v $GITHUB_WORKSPACE:/ci \
+            --cap-add=SYS_PTRACE --security-opt seccomp=unconfined \
             -v $GITHUB_WORKSPACE/dockerfiles_feeds:/dockerfiles_feeds \
             -e CI_HELPER=/dockerfiles_feeds/scripts/ci_helpers.sh \
             -e PKG_MANAGER=${{ env.PKG_MANAGER }} \

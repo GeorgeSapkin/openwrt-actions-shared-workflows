@@ -224,7 +224,8 @@ jobs:
         if: ${{ matrix.runtime_test && fromJSON(env.HAVE_PKGS) }}
         uses: actions/checkout@v6
         with:
-          repository: openwrt/actions-shared-workflows
+          repository: georgesapkin/openwrt-actions-shared-workflows
+          ref: multi-arch-test-build-even-more-improvements-2
           path: workflow_context
           sparse-checkout: |
             .github/scripts/ci_helpers.sh
